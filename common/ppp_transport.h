@@ -1,5 +1,6 @@
 #include "ppp_packet.h"
 #include <OS.h>
+#include <limits.h>
 
 typedef enum {
 	in_buffer,
@@ -40,4 +41,6 @@ class ppp_transport {
 		sem_id read_write;
 		int pty_fd;
 		const char *port_name;
+		
+		int32 mtu;
 };

@@ -152,6 +152,7 @@ ppp_transport::ppp_transport (const char *port) {
 	char text_to_fiddle[64];
 	out_buffer_size = 0;
 	modem = 0;
+	mtu = -1;
 	linkUp = false;
 	port_name = port;
 	
@@ -169,7 +170,12 @@ ppp_transport::ppp_transport (const char *port) {
 	/* Read setting for drop_second_ipcp */
 	find_net_setting(NULL,port,"drop_second_ipcp",text_to_fiddle,64);
 	drop_second_ipcp = (BString(text_to_fiddle).IFindFirst("true") != -1);
-		
+	/* Read setting for mtu */
+	text_to_fiddle[0] = 0; //---find_net_setting won't change it if there's nothing
+	find_net_setting(NULL,port,"mtu",text_to_fiddle,64);
+	if (text_to_fiddle[0] != 0)
+		sscanf(text_to_fiddle,"%d",&mtu);
+	
 	resume_thread(watcher);
 	#if DEBUG_ON
 		just_started = true;
@@ -202,7 +208,7 @@ void ppp_transport::SendPacketToPPP(PPPPacket *recv) {
 	static uint8 data[B_PAGE_SIZE] /* don't keep reallocating */;
 	if (recv == NULL)
 		return;
-	size_t size = recv->GetAsyncFrame(data,B_PAGE_SIZE);
+	size_t size = recv->GetAsyncFrame(data,B_PAGE_SIZE,mtu);
 	WriteBuffer(data,size,in_buffer);
 }
 
@@ -253,7 +259,7 @@ void ppp_transport::MessageReceived(const void *data,size_t length) {
 				} else {
 					sub_length = (i-offset)+1;
 					PPPPacket *to_send = AllocPacket();
-					to_send->SetToAsyncFrame((void *)(uint32(buffer) + offset),sub_length);
+					to_send->SetToAsyncFrame((void *)(uint32(buffer) + offset),sub_length,mtu);
 					uint16 ppp_protocol;
 					to_send->GetData(&ppp_protocol,2);
 					FROM_NET_ENDIAN(ppp_protocol);
