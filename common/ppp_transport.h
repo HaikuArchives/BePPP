@@ -35,6 +35,7 @@ class ppp_transport {
 		
 		void *out_buffer_data;
 		ssize_t out_buffer_size, out_buf_max;
+		
 		bool drop_second_ipcp;
 		
 		thread_id watcher,modem;

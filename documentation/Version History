@@ -12,3 +12,9 @@ Beta 5
 	-More fixes to serial PPP handling, outbound data transfer works properly now.
 Beta 5.1
 	- DNS works! Yayyy!
+1.0
+	- First stable release
+1.1
+	- Fixes embarrassing crashing bug with the not-so-stable 1.0
+1.2
+	- Fixes another crashing bag with uploads and allows users to manually enable IPCP drop fix

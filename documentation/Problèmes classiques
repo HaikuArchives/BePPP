@@ -16,6 +16,6 @@ Vous devrez entrer manuellement vos DNS. Essayez de les obtenir depuis un autre 
 
 3. Il se connecte mais il se débranche rapidement
 
-Choisissez "Static IP" dans le préférences du DialUpNetworking. Vous ne devez pas entrer un IP statique, il utilise un IP dynamique en tout cas.
+Choisissez "Static IP" dans le préférences du DialUpNetworking. Vous ne devez pas entrer un IP statique, il utilise un IP dynamique en tout cas. S'il ne marche pas, choisissez "Force Manual DNS" dans PPPoE Config (lancez l'icon pppoe).
 
 Si tout semble échouer, contactez Nathan Whitehorn : nathanwhitehorn@kagi.com

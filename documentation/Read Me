@@ -8,7 +8,7 @@ Compatibility
 		-A pre-BONE version of the BeOS (as of the writing of this document, BONE has not yet been released)
 
 Notes on upgrading from Beta 2 or Beta 1:
-	You ABSOLUTELY MUST delete pppoe_port the the kernel add-ons directory. This software WILL NOT work if it is still there.
+	You ABSOLUTELY MUST delete pppoe_port from the kernel add-ons directory. This software WILL NOT work if it is still there.
 
 How to Install
 	If you have a PPC machine:
@@ -16,7 +16,7 @@ How to Install
 	If you have an x86 machine:
 		1. Run bin/x86/pppoe, choose OK, and check "PPPoE Active".
 	If you have either:
-		1a. While still in pppoe choose "Force Manual DNS" if you want to manually enter your DNS servers. This fixes a bug that may cause the connection to drop immediately after connecting. The Network preferences panel MUST be closed when changing pppoe settings.
+			1a. While still in pppoe choose "Force Manual DNS" if you want to manually enter your DNS servers. This fixes a bug that may cause the connection to drop immediately after connecting. The Network preferences panel MUST be closed when changing pppoe settings.
 		2. Open the Network preferences panel and add an ethernet interface for the card your DSL modem is connected to if there is not one already with the following settings:
 			√ Interface Enabled
 			•  Specify Settings
@@ -26,7 +26,7 @@ How to Install
 		4. Restart networking
 		5. Open DialUpNetworking
 		6. Set it up with the following settings:
-			Phone number: blank
+			Phone number: 
 			User Name: your DSL log-on name
 			Password: your DSL log-on password
 		7. Click on Settings...

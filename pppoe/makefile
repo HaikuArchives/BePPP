@@ -31,7 +31,7 @@ TYPE= APP
 #	if two source files with the same name (source.c or source.cpp)
 #	are included from different directories.  Also note that spaces
 #	in folder names do not work well with this makefile.
-SRCS= pppoe.cp pppoe_packet.cp enet_packet.cp config.cpp ../common/ppp_transport.cp ../common/ppp_packet.cp ../common/mtu.cp ../common/md5.c
+SRCS= pppoe.cp pppoe_packet.cp enet_packet.cp config.cpp ../common/ppp_transport.cp ../common/ppp_packet.cp
 
 #	specify the resource files to use
 #	full path or a relative path to the resource file can be used.
@@ -81,7 +81,7 @@ OPTIMIZE= FULL
 #	to use.  For example, setting DEFINES to "DEBUG=1" will cause the
 #	compiler option "-DDEBUG=1" to be used.  Setting DEFINES to "DEBUG"
 #	would pass "-DDEBUG" on the compiler's command line.
-#DEFINES= DEBUG_ON=1
+#DEFINES= 
 DEFINES= 
 
 #	specify special warning levels

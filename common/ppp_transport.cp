@@ -10,6 +10,10 @@
 #include <malloc.h>
 #include "ppp_transport.h"
 
+#if DEBUG_ON
+	extern FILE *f;
+#endif
+
 #if ASSERTIONS
 	#include <assert.h>
 #endif
@@ -18,14 +22,6 @@
 #define FROM_NET_ENDIAN(a)  swap_data(B_UINT16_TYPE,&a,sizeof(a),B_SWAP_BENDIAN_TO_HOST)
 
 #define WATCH_PORT_PRIORITY 10
-
-
-/*#define TIMED 1
-#define DEBUG_ON 1*/
-
-#if DEBUG_ON
-#include "debug.h"
-#endif
 
 #if TIMED
 int total_recv_packets = 0;
@@ -58,12 +54,12 @@ int32 ppp_transport::watch_port(void *us) {
 	ppp_transport *obj = (ppp_transport *)(us);
 	
 	ssize_t bufferSize;
-	uint8 buffer[B_PAGE_SIZE];
+	uint8 buffer[8192];
 	char port_path[64];
 	sprintf(port_path,"/dev/ports/%s",obj->port_name);
 		
 	while (true) {
-		bufferSize = read(obj->pty_fd,buffer,B_PAGE_SIZE);
+		bufferSize = read(obj->pty_fd,buffer,8192);
 		if (bufferSize <= 0) {			//--------We got closed. Phooey.
 			char pty_name[15];
 			alloc_pty(pty_name,&(obj->pty_fd));
@@ -140,8 +136,11 @@ size_t ppp_transport::ReadBuffer(void *data,size_t length,buffer_type buffer,off
 
 size_t ppp_transport::WriteBuffer(void *data,size_t length,buffer_type buffer) {  //-------Implement sliding buffer
 	acquire_sem(read_write);
-	if (((out_buffer_size + length) > out_buf_max) && (buffer == out_buffer))
+	if (((out_buffer_size + length) > out_buf_max) && (buffer == out_buffer)) {
+		printf("pppoe: Reallocing...\n");
 		out_buffer_data = (uint8 *)realloc(out_buffer_data,out_buf_max += 4096);
+		printf("pppoe: Realloc complete...\n");
+	}
 	
 	if (buffer == out_buffer) {
 		if (length != 0)
@@ -149,7 +148,14 @@ size_t ppp_transport::WriteBuffer(void *data,size_t length,buffer_type buffer) {
 		
 		out_buffer_size += length;
 	} else {
-		write(pty_fd,data,length);
+		size_t written = write(pty_fd,data,length);
+		size_t curLength = length - written;
+		while (curLength > 0 /* if it wasn't all written */) {
+			snooze(500); /* wait a little, then retry */
+			printf("pppoe: Trying again: %d bytes written...\n",written);
+			written += write(pty_fd,(void *)((uint32)data + (uint32)written),curLength);
+			curLength = length - written;
+		}
 	}
 	
 	release_sem(read_write);
@@ -161,11 +167,12 @@ size_t ppp_transport::WriteBuffer(void *data,size_t length,buffer_type buffer) {
 }
 
 ppp_transport::ppp_transport (const char *port) {
-	out_buffer_data = (uint8 *)malloc(4096);
+	out_buffer_data = malloc(4096);
 	out_buf_max = 4096;
+	out_buffer_size = 0;
+	
 	drop_second_ipcp = false;
 	char text_to_fiddle[64];
-	out_buffer_size = 0;
 	modem = 0;
 	mtu = -1;
 	linkUp = false;
@@ -184,7 +191,7 @@ ppp_transport::ppp_transport (const char *port) {
 	
 	/* Read setting for drop_second_ipcp */
 	find_net_setting(NULL,port,"drop_second_ipcp",text_to_fiddle,64);
-	drop_second_ipcp = (BString(text_to_fiddle).IFindFirst("true") != -1);
+	drop_second_ipcp = !(BString(text_to_fiddle).IFindFirst("false") != -1);
 	/* Read setting for mtu */
 	text_to_fiddle[0] = 0; //---find_net_setting won't change it if there's nothing
 	find_net_setting(NULL,port,"mtu",text_to_fiddle,64);
@@ -192,12 +199,6 @@ ppp_transport::ppp_transport (const char *port) {
 		sscanf(text_to_fiddle,"%d",&mtu);
 	
 	resume_thread(watcher);
-	#if DEBUG_ON
-		just_started = true;
-		f = fopen(DUMPTO, "w+");
-		fprintf(f,"Allocated pty: %s\n",pty_name);
-		fflush(f);
-	#endif
 	#if TIMED
 		sprintf(text_to_fiddle,"/tmp/%s_timers.txt",port);
 		t = fopen(text_to_fiddle, "w+");
@@ -220,6 +221,11 @@ void ppp_transport::Terminate(bool kill_net,bool kill_serial) {
 }
 
 void ppp_transport::SendPacketToPPP(PPPPacket *recv) {
+	#if TIMED
+		fprintf(t,"Entering SendPacketToPPP...");
+		fflush(t);
+		BStopWatch watch("SendPacketToPPP_watch");
+	#endif
 	static uint8 data[B_PAGE_SIZE] /* don't keep reallocating */;
 	if (recv == NULL)
 		return;
@@ -228,6 +234,10 @@ void ppp_transport::SendPacketToPPP(PPPPacket *recv) {
 		assert(size < 4096);
 	#endif
 	WriteBuffer(data,size,in_buffer);
+	#if TIMED
+		fprintf(t,"Elapsed time = %f secs\nTotal session packets: s:%d,r:%d\nBuffer length on exit: %d\n",watch.ElapsedTime() / float(1e6),total_sent_packets,++total_recv_packets,out_buffer_size);
+		fflush(t);
+	#endif
 }
 
 void ppp_transport::MessageReceived(const void *data,size_t length) {
@@ -281,20 +291,6 @@ void ppp_transport::MessageReceived(const void *data,size_t length) {
 					uint16 ppp_protocol;
 					to_send->GetData(&ppp_protocol,2);
 					FROM_NET_ENDIAN(ppp_protocol);
-					/*if ((ppp_protocol == 0x0021) && (mtu > 0)) {
-						uint8 b;
-						uint16 s;
-						
-						to_send->GetData(&b,1,2);
-						if ((b >> 4) == 4) {
-							to_send->GetData(&s,2,2);
-							s = ntohs(s);
-							if (s > mtu) /* Aaa! Packet's too big  {
-								static uint8 buffer[4096];
-								size_t size;
-								
-								size = to_send->GetData(buffer,4096,2);
-								PPPPacket *to_send_split = AllocPacket();*/
 					SendPacketToNet(to_send);
 					SlideBuffer(sub_length,offset);
 					i -= sub_length;

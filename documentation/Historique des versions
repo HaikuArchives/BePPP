@@ -16,3 +16,9 @@ Beta 5
 	- D'autres corrections de bogues dans la prise en charge PPP, les transferts hors-champ fonctionnent désormais.
 Beta 5.1
 	- Le DNS marche!
+1.0
+	- Le première version
+1.1
+	- Correction d'un bug fatal
+1.2
+	- Correction d'un autre bug fatal et il y a plus d'options

@@ -23,7 +23,7 @@
 
 void DumpPacket(BNetPacket *pkt);
 
-static FILE *f;
+/*static */FILE *f;
 static short just_started;
 
 void DumpPacket(BNetPacket *pkt) {

@@ -35,35 +35,39 @@ class ConfigWindow : public BWindow {
 			
 			ipcp = new BCheckBox(box,"drop_ipcp","Force Manual DNS",new BMessage('ipcp'));
 			find_net_setting(NULL,"pppoe","drop_second_ipcp",setting,255);
-			if (BString(setting).IFindFirst("true") >= 0)
-				ipcp->SetValue(B_CONTROL_ON);
-			else
+			if (BString(setting).IFindFirst("false") >= 0)
 				ipcp->SetValue(B_CONTROL_OFF);
+			else
+				ipcp->SetValue(B_CONTROL_ON);
 			gray->AddChild(ipcp);
 			
-			box = Bounds();
-			
-			box.top = ((box.bottom / 3) * 2) - 15;
-			box.bottom -= 100;
-			
-			setting[0] = 0;
-			clamp = new BCheckBox(box,"clamp","Clamp MSS",new BMessage('cmss'));
-			find_net_setting(NULL,"pppoe","mtu",setting,255);
-			if (setting[0] != 0)
-				clamp->SetValue(B_CONTROL_ON);
-			else
-				clamp->SetValue(B_CONTROL_OFF);
-			gray->AddChild(clamp);
-			
-			box = Bounds();
-			box.top = box.bottom - 20;
-			box.left += 20;  box.right -= 5;
-			
-			mtu = new BTextControl(box,"mtu","MTU: ",setting,new BMessage('mtu '));
-			mtu->SetDivider(be_plain_font->StringWidth("MTU: "));
-			mtu->SetEnabled(setting[0] != 0);
-			
-			gray->AddChild(mtu);
+			#if REM_MTU
+				box = Bounds();
+				
+				box.top = ((box.bottom / 3) * 2) - 15;
+				box.bottom -= 100;
+				
+				setting[0] = 0;
+				clamp = new BCheckBox(box,"clamp","Force Remote MTU",new BMessage('cmss'));
+				find_net_setting(NULL,"pppoe","mtu",setting,255);
+				if (setting[0] != 0)
+					clamp->SetValue(B_CONTROL_ON);
+				else
+					clamp->SetValue(B_CONTROL_OFF);
+				gray->AddChild(clamp);
+				
+				box = Bounds();
+				box.top = box.bottom - 20;
+				box.left += 20;  box.right -= 5;
+				
+				mtu = new BTextControl(box,"mtu","MTU: ",setting,new BMessage('mtu '));
+				mtu->SetDivider(be_plain_font->StringWidth("MTU: "));
+				mtu->SetEnabled(setting[0] != 0);
+				
+				gray->AddChild(mtu);
+			#else
+				ResizeBy(0,-30);
+			#endif
 			
 			AddChild(gray);
 		}
@@ -102,7 +106,7 @@ class ConfigWindow : public BWindow {
 			}
 		}
 		bool QuitRequested(void) {
-			MessageReceived(new BMessage('mtu '));
+			//MessageReceived(new BMessage('mtu '));
 			be_app->PostMessage(B_QUIT_REQUESTED);
 			return true;
 		}

@@ -7,9 +7,14 @@
 #include "pppoe_packet.h"
 #include "ppp_transport.h"
 
+#if DEBUG_ON
+	extern FILE *f;
+	#include "debug.h"
+#endif
+
 #define DISCOVERY_TIMEOUT 10000000//µs
 
-class PPPoE : public BNetProtocol, BPacketHandler, ppp_transport  {
+class PPPoE : public BNetProtocol, public BPacketHandler, public ppp_transport  {
 	public:
 		PPPoE(void);
 		void AddDevice(BNetDevice *dev, const char *name);
@@ -35,6 +40,10 @@ BNetProtocol *open_protocol(const char *device) {
 PPPoE::PPPoE (void) : BNetProtocol() , ppp_transport("pppoe") {
 	active = NULL;
 	session_id = 0;
+	#if DEBUG_ON
+		just_started = true;
+		f = fopen(DUMPTO, "w+");
+	#endif
 }
 
 void PPPoE::AddDevice(BNetDevice *dev, const char *name) {
@@ -63,6 +72,10 @@ void PPPoE::SendPacketToNet(PPPPacket *send) {
 		return;
 	SessionPacket *packet = (SessionPacket *)(send);
 	packet->Finalize();
+	#if DEBUG_ON
+		fprintf(f,"Outgoing Packet:\n");
+		DumpPacket(packet);
+	#endif
 	active->SendPacket(packet);
 }
 
@@ -77,6 +90,7 @@ bool PPPoE::PacketReceived(BNetPacket *recv, BNetDevice *from) {
 	if ((generic.Protocol() != 0x8863) && (generic.Protocol() != 0x8864))
 		return false;
 	#if DEBUG_ON
+		fprintf(f,"Incoming Packet:\n");
 		DumpPacket(recv);
 	#endif
 	if (generic.Protocol() == 0x8863) {
