@@ -7,7 +7,12 @@
 #include <net_settings.h>
 #include <TypeConstants.h>
 #include <ByteOrder.h>
+#include <malloc.h>
 #include "ppp_transport.h"
+
+#if ASSERTIONS
+	#include <assert.h>
+#endif
 
 #define NET_ENDIAN(a)  swap_data(B_UINT16_TYPE,&a,sizeof(a),B_SWAP_HOST_TO_BENDIAN)
 #define FROM_NET_ENDIAN(a)  swap_data(B_UINT16_TYPE,&a,sizeof(a),B_SWAP_BENDIAN_TO_HOST)
@@ -114,6 +119,9 @@ void ppp_transport::SlideBuffer(off_t distance,off_t offset,buffer_type buffer) 
 		out_buffer_size -= distance;
 	} else
 		out_buffer_size = 0;
+	
+	if (out_buffer_size < (out_buf_max - 5096 /* Really under, not just a byte or two */))
+		out_buffer_data = (uint8 *)realloc(out_buffer_data,out_buf_max -= 4096);
 }
 	
 
@@ -132,6 +140,8 @@ size_t ppp_transport::ReadBuffer(void *data,size_t length,buffer_type buffer,off
 
 size_t ppp_transport::WriteBuffer(void *data,size_t length,buffer_type buffer) {  //-------Implement sliding buffer
 	acquire_sem(read_write);
+	if (((out_buffer_size + length) > out_buf_max) && (buffer == out_buffer))
+		out_buffer_data = (uint8 *)realloc(out_buffer_data,out_buf_max += 4096);
 	
 	if (buffer == out_buffer) {
 		if (length != 0)
@@ -143,11 +153,16 @@ size_t ppp_transport::WriteBuffer(void *data,size_t length,buffer_type buffer) {
 	}
 	
 	release_sem(read_write);
+	
+	#if ASSERTIONS
+		assert(out_buffer_size < out_buf_max);
+	#endif
 	return length;
 }
 
 ppp_transport::ppp_transport (const char *port) {
-	out_buffer_data = new uint8[B_PAGE_SIZE];
+	out_buffer_data = (uint8 *)malloc(4096);
+	out_buf_max = 4096;
 	drop_second_ipcp = false;
 	char text_to_fiddle[64];
 	out_buffer_size = 0;
@@ -209,6 +224,9 @@ void ppp_transport::SendPacketToPPP(PPPPacket *recv) {
 	if (recv == NULL)
 		return;
 	size_t size = recv->GetAsyncFrame(data,B_PAGE_SIZE,mtu);
+	#if ASSERTIONS
+		assert(size < 4096);
+	#endif
 	WriteBuffer(data,size,in_buffer);
 }
 
@@ -263,6 +281,20 @@ void ppp_transport::MessageReceived(const void *data,size_t length) {
 					uint16 ppp_protocol;
 					to_send->GetData(&ppp_protocol,2);
 					FROM_NET_ENDIAN(ppp_protocol);
+					/*if ((ppp_protocol == 0x0021) && (mtu > 0)) {
+						uint8 b;
+						uint16 s;
+						
+						to_send->GetData(&b,1,2);
+						if ((b >> 4) == 4) {
+							to_send->GetData(&s,2,2);
+							s = ntohs(s);
+							if (s > mtu) /* Aaa! Packet's too big  {
+								static uint8 buffer[4096];
+								size_t size;
+								
+								size = to_send->GetData(buffer,4096,2);
+								PPPPacket *to_send_split = AllocPacket();*/
 					SendPacketToNet(to_send);
 					SlideBuffer(sub_length,offset);
 					i -= sub_length;
@@ -308,6 +340,6 @@ ppp_transport::~ppp_transport(void) {
 	kill_thread(watcher);
 	close(pty_fd);
 	unlink(fiddle);
-	delete [] out_buffer_data;
+	free(out_buffer_data);
 	delete_sem(read_write);
 }

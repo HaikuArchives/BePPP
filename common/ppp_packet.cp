@@ -4,7 +4,10 @@
 #include <SupportDefs.h>
 #include "ppp_packet.h"
 #include "fcs.h"
-#include "mtu.h"
+
+#if ASSERTIONS
+	#include <assert.h>
+#endif
 
 #define verbose_assert(test,var)\
 	if (test) {\
@@ -14,7 +17,7 @@
 	}
 
 void PPPPacket::SetToAsyncFrame(const void *frame,size_t length,int32 clamp) {
-	static uint8 edit_buffer[4096];
+	uint8 *edit_buffer = new uint8[4096];
 	int32 g = 0;
 	
 	//verbose_assert(length < 5/*minimum PPP packet len*/,length);
@@ -34,20 +37,18 @@ void PPPPacket::SetToAsyncFrame(const void *frame,size_t length,int32 clamp) {
 		g++;
 	}
 	//verbose_assert((g < 2) || (g > 4096),g);
-	
-	if (clamp > 0)
-		clampMSS(edit_buffer,g,clamp);
 		
 	SetData(edit_buffer,g,0);
+	delete [] edit_buffer;
+	#if ASSERTIONS
+		assert(g < 4096);
+	#endif
 }
 
 size_t PPPPacket::GetAsyncFrame(const void *frame,size_t length,int32 clamp) {
 	uint8 *data = (uint8 *)(frame);
-	static uint8 edit_buffer[4096];
+	uint8 *edit_buffer = new uint8[4096];
 	size_t size = GetData((const void *)(uint32(data) + 3),4096);
-	
-	if (clamp > 0)
-		clampMSS((uint8 *)(uint32(data) + 3),size,clamp);
 	
 		data[0] = 0x7e;			//-----MagicCookies
 		data[1] = 0xff;			//-----|
@@ -75,5 +76,9 @@ size_t PPPPacket::GetAsyncFrame(const void *frame,size_t length,int32 clamp) {
 	}
 	size = g+1;
 	data[g] = 0x7e;	//-----Frame termination
+	delete [] edit_buffer;
+	#if ASSERTIONS
+		assert(size < 4096);
+	#endif
 	return size;
 }
