@@ -21,21 +21,19 @@ class ppp_transport {
 		volatile bool linkUp;
 		char number_dialed[255];
 	private:
-		inline void SlideBuffer(void);
-		void DataReceived(off_t offset);
 		
-		static int32 watch_port(void *us);
+		void DataReceived(off_t offset);
 		void Modem(void);
 		
+		static int32 watch_port(void *us);
 		status_t alloc_pty(char *buffer);
 		
 		void *out_buffer_data;
-		ssize_t out_buffer_size, out_buf_max;
+		ssize_t out_buffer_size;
 		
 		bool drop_second_ipcp;
 		
 		thread_id watcher;
-		
 		BSerialPort serial;
 		const char *port_name;
 		

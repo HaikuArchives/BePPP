@@ -71,69 +71,57 @@ int32 ppp_transport::watch_port(void *us) {
 			continue;
 		
 		old_length = obj->out_buffer_size;
-		if (obj->out_buffer_data == NULL) {
-			obj->out_buf_max = 4096 * (int(bufferSize / 4096) + 1);
-			obj->out_buffer_data = malloc(obj->out_buf_max);
-		} else {
-			while ((obj->out_buffer_size + bufferSize) > obj->out_buf_max)
-				obj->out_buffer_data = realloc(obj->out_buffer_data,obj->out_buf_max += 4096);
-		}
+		if (obj->out_buffer_data == NULL)
+			obj->out_buffer_data = malloc(bufferSize); //---realloc(NULL) only works on PPC
+		 else
+		 	obj->out_buffer_data = realloc(obj->out_buffer_data,obj->out_buffer_size + bufferSize);
+
 		obj->serial.Read((void *)((uint32)(obj->out_buffer_data) + (uint32)obj->out_buffer_size),bufferSize);
 		
 		obj->out_buffer_size += bufferSize;
 	
-		
-		#if ASSERTIONS
-			assert(obj->out_buf_max >= obj->out_buffer_size);
-		#endif
 		obj->DataReceived(old_length);
+		
+		if (obj->out_buffer_size == 0) {
+			free(obj->out_buffer_data);
+			obj->out_buffer_data = NULL;
+		}
 	}
 	return 0;
 }
 
 void ppp_transport::Modem(void) {							//---------Our lovely fake modem-------
-	if (out_buffer_size == 0)
+	if (out_buffer_size <= 2)
 		return;
 	char last_char = ((uint8 *)(out_buffer_data))[out_buffer_size - 1];
 	if ((last_char != '\r') && (last_char != '\n'))
 		return;
-	BString command((const char *)out_buffer_data,out_buffer_size);
+	
 	char *response;
-	if (command.IFindFirst("ATDT") != B_ERROR) {
-		//command.CopyInto(number_dialed,4,command.FindFirst('\r') - 4);
-		Open();
-		if (!(linkUp))
-			response = /*(last_char == '\n') ? */"NO CARRIER\n\r"/* : "NO CARRIER\r\n"*/;
-		else
-			response = /*(last_char == '\n') ? */"CONNECT 256000\n\r"/* : "CONNECT 256000\r\n"*/;
-	} else {
-		response = /*(last_char == '\n') ? */"OK\n\r"/* : "OK\r\n"*/;
+	switch (((uint8 *)out_buffer_data)[2]) {
+		case 'D': //--Dial
+			Open();
+			if (!(linkUp))
+				response = "NO CARRIER\n\r";
+			else
+				response = "CONNECT 256000\n\r";
+			break;
+		case 'H':	//--Hang up
+			serial.Write("OK\n\r",4);
+			snooze(500);
+			serial.Close();
+			out_buffer_size = 0;
+			return;
+		default: //--Init strings
+			response = "OK\n\r";
+			break;
 	}
-	if (command.IFindFirst("ATH") != B_ERROR) {
-		serial.Write("OK\n\r",4);
-		snooze(500);
-		serial.Close();
-		SlideBuffer();
-		return;
-	}
-	#if DEBUG_ON
-		fprintf(f,"\n\nResponse: %s",response);
-		fflush(f);
-	#endif
 	serial.Write(response,strlen(response));
-	SlideBuffer();
-}
-
-void ppp_transport::SlideBuffer(void) {
-	out_buf_max = 0;
 	out_buffer_size = 0;
-	free(out_buffer_data);
-	out_buffer_data = NULL;
 }
 
 ppp_transport::ppp_transport (const char *port) {
 	out_buffer_data = NULL;
-	out_buf_max = 0;
 	out_buffer_size = 0;
 	
 	drop_second_ipcp = false;
@@ -196,11 +184,10 @@ void ppp_transport::SendPacketToPPP(PPPPacket *recv) {
 }
 
 void ppp_transport::DataReceived(off_t offset) {
-
 	if ((linkUp == false) || ((out_buffer_size >= 3) && (memcmp(out_buffer_data,"+++",3) == 0))) {
 		if ((out_buffer_size >= 3) && (memcmp(out_buffer_data,"+++",3) == 0)) {
 			Terminate(true,false);
-			SlideBuffer();
+			out_buffer_size = 0;
 			return;
 		}
 		serial.Write((void *)(uint32(out_buffer_data) + uint32(offset)),out_buffer_size - offset); //---Echo back
@@ -213,6 +200,7 @@ void ppp_transport::DataReceived(off_t offset) {
 		ssize_t sub_length;
 		uint8 *buffer = (uint8 *)(out_buffer_data);
 		bool is_first_tilde = false;
+		uint16 ppp_protocol;
 		for (int32 i = 0; i < out_buffer_size;i++) {
 			if (buffer[i] == 0x7e) {
 				is_first_tilde = !is_first_tilde;
@@ -223,7 +211,6 @@ void ppp_transport::DataReceived(off_t offset) {
 					sub_length = (i-offset)+1;
 					PPPPacket *to_send = AllocPacket();
 					to_send->SetToAsyncFrame((void *)(uint32(buffer) + offset),sub_length,mtu);
-					uint16 ppp_protocol;
 					to_send->GetData(&ppp_protocol,2);
 					FROM_NET_ENDIAN(ppp_protocol);
 					SendPacketToNet(to_send);
@@ -232,7 +219,10 @@ void ppp_transport::DataReceived(off_t offset) {
 				}
 			}
 		}
-		SlideBuffer();
+		#if ASSERTIONS
+			assert ((offset + sub_length >= out_buffer_size) || ((ppp_protocol == 0x8021) && (drop_second_ipcp)));
+		#endif
+		out_buffer_size = 0;
 	}
 }
 
