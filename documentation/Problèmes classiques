@@ -1,0 +1,21 @@
+PROBLEMES - PPPoE
+
+1. Si le net_server dit qu'il ne peut initialiser le protocole PPPoe
+
+Vérifiez que le fichier pppoe se trouve bien dans :
+
+/boot/home/config/add-ons/net_server
+
+S'il ne fonctionne toujours pas, déplacez-le dans :
+
+/boot/beos/system/add-ons/net_server
+
+2. Il se connecte mais passe son temps à dire que l'hôte ne peut être trouvé!
+
+Vous devrez entrer manuellement vos DNS. Essayez de les obtenir depuis un autre client PPPoe sur une autre machine ou bien contactez votre fournisseur d'accès. Vous devrez entrer ces informations dans les préférences du DialUpNetworking.
+
+3. Il se connecte mais il se débranche rapidement
+
+Choisissez "Static IP" dans le préférences du DialUpNetworking. Vous ne devez pas entrer un IP statique, il utilise un IP dynamique en tout cas.
+
+Si tout semble échouer, contactez Nathan Whitehorn : nathanwhitehorn@kagi.com

@@ -1,0 +1,14 @@
+VERSION HISTORY - PPPoE
+
+Beta 1.
+	-Initial release
+Beta 2.
+	-Allowed PPPoE to begin a semblance of working on x86
+Beta 3.
+	-Replaced pppoe_port with pty, works properly now
+Beta 4.
+	-Fixed serial PPP handling, no more dropped packets
+Beta 5
+	-More fixes to serial PPP handling, outbound data transfer works properly now.
+Beta 5.1
+	- DNS works! Yayyy!

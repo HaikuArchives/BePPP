@@ -1,0 +1,78 @@
+LISEZ-MOI - PPPoE
+
+Compatibilité, besoins :
+
+- BeOS version 5 ; la version 4 pourrait être utilisée, mais cela n'a pas été testé.
+- Une carte Ethernet reconnue par le système
+- Une connection reposant sur le protocole PPPoe ; en France il s'agit du nouveau modèle de modem qui remplacera à terme l'obsolète Alcatel. Les connections via PPPoe fonctionnent généralement via Mac/WinPoET ou Enternet.
+- Une version pré-BONE (il n'est pas actuellement distribué)
+
+
+Note si vous faites une mise à jour depuis la version beta 1 ou beta 2 :
+
+Vous devez ABSOLUMENT effacer le fichier pppoe_port du fichier des add_ons du kernel. Ce logiciel ne pourra pas fonctionner si ce fichier reste en place.
+
+
+Procédure d'installation
+
+Si votre machine est PowerPC :
+
+Ouvrez /bin/ppc/pppoe et choisissez "OK" quand il affiche "I don't seem to..." et ensuite choisissez "PPPoE Active".
+
+Si votre machine est x86 :
+
+Ouvrez /bin/x86/pppoe et choisissez "OK" quand il affiche "I don't seem to..." et ensuite choisissez "PPPoE Active".
+
+Puis ouvrez le panneau de préférence Network et vérifiez que votre carte Ethernet est reconnue. Elle doit être indiquée "Ready" et avoir les choix suivants configurés :
+
+			√ Interface Enabled
+			ø  Specify Settings
+				IP Address: 192.168.0.1
+				Subnet Mask: 255.255.255.0
+				Gateway: 0.0.0.0
+
+Relancez ensuite votre couche réseau.
+
+Ouvrez le programme : DialUpNetworking.
+
+Indiquez les préférences suivantes :
+
+			Phone number: 555-12 12
+			User Name: votre login de connection
+			Password: votre mot de passe de connection
+
+Cliquez ensuite sur le bouton "Settings" et choisissez "Alternate PPP" comme type de serveur.
+
+Cliquez sur "Modem" et ajoutez un "Custom modem" avec pour chaîne d'initialisation :
+
+AT
+
+Entrez les préférences suivantes :
+
+			Your Modem Is: le modèle 'custom' que vous venez de créer
+			Connect via: pppoe
+			Speed: 115200
+
+Vous pouvez modifier les autres préférences comme bon vous semble.
+
+Appuyez sur le bouton "Done" et appuyez sur "Connect" pour vous connecter.
+
+
+Problèmes et limitations connues :
+
+DUN ne pourrais pas trouver les serveurs de DNS. :-(
+
+
+Notes techniques :
+
+Ce programme est un logiciel natif pour BeOS, conçu en respect des RFS 1661, 1662 et 2516. Le add_on au net_server ajoute un pseudo-terminal pty et relie ce dernier avec un lien symbolique vers /dev/ports/pppoe.
+
+DialUpNetworking pense avoir affaire à un port série, bien qu'en fait les données sont transmises à l'add_on au net_server. Le driver pppoe agit comme un modem, répondant aux commandes AT avec les réponses appropriées. Lorsque une connection est établie, toutes les frames en entrée et sortie PPP sont traduites par le PPPoe en données série PPP dans les deux sens.
+
+
+
+
+
+
+
+			

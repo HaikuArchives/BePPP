@@ -1,0 +1,18 @@
+HISTORIQUE DES VERSIONS - PPPoE
+
+Beta 1.
+	- Distribution initiale.
+
+Beta 2.
+	- Ajout de la version x86 de PPPoe.
+
+Beta 3.
+	- Remplacement du pppoe_port par un pty - fonctionnement correct obtenu
+
+Beta 4.
+	- Correction de la prise en charge PPP série, arrêt des pertes de paquets.
+
+Beta 5
+	- D'autres corrections de bogues dans la prise en charge PPP, les transferts hors-champ fonctionnent désormais.
+Beta 5.1
+	- Le DNS marche!

@@ -1,0 +1,49 @@
+READ ME - PPPoE
+
+Compatibility
+	Requirements:
+		-BeOS R5 (R4 may work, it has not been tested)
+		-A BeOS compatible ethernet card
+		-A PPPoE DSL connection (uses Mac/WinPoET or EtherNET on other OS)
+		-A pre-BONE version of the BeOS (as of the writing of this document, BONE has not yet been released)
+
+Notes on upgrading from Beta 2 or Beta 1:
+	You ABSOLUTELY MUST delete pppoe_port the the kernel add-ons directory. This software WILL NOT work if it is still there.
+
+How to Install
+	If you have a PPC machine:
+		1. Run bin/ppc/pppoe, choose OK, and check "PPPoE Active".
+	If you have an x86 machine:
+		1. Run bin/x86/pppoe, choose OK, and check "PPPoE Active".
+	If you have either:
+		1a. While still in pppoe choose "Force Manual DNS" if you want to manually enter your DNS servers. This fixes a bug that may cause the connection to drop immediately after connecting. The Network preferences panel MUST be closed when changing pppoe settings.
+		2. Open the Network preferences panel and add an ethernet interface for the card your DSL modem is connected to if there is not one already with the following settings:
+			√ Interface Enabled
+			•  Specify Settings
+				IP Address: 192.168.0.1
+				Subnet Mask: 255.255.255.0
+				Gateway: 0.0.0.0
+		4. Restart networking
+		5. Open DialUpNetworking
+		6. Set it up with the following settings:
+			Phone number: blank
+			User Name: your DSL log-on name
+			Password: your DSL log-on password
+		7. Click on Settings...
+			Choose 'Alternate PPP' as your server type
+		8. Click on Modem...
+			Add a new custom modem with the init string AT
+		9. Enter the following settings:
+			Your Modem Is: the custom modem you just set up
+			Connect via: pppoe
+			Speed: 115200
+		10. Any other settings can be whatever you like
+		11. Press Done
+		12. Press Connect and enjoy the Internet
+
+Known Bugs
+	Dynamic DNS acquisition may not work. See instruction 1a. :-(
+
+Technical Notes (how it works and what it does):
+	This is native BeOS software designed in compliance with RFCs 1661, 1662, and 2516. The net_server add-on creates a pty (pseudo-terminal) and links it with a symlink to /dev/ports/pppoe. DUN (DialUpNetworking) thinks it is a serial port but is instead passing data to the net_server add-on. The pppoe driver then pretends to be a modem, responding to AT commands with appropriate responses. When a connection is established, all incoming and outgoing PPP frames are translated from serial PPP to PPPoE and back again.
+			

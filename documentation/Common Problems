@@ -1,0 +1,12 @@
+PROBLEMS - PPPoE
+
+1. The net_server says that it can't initialize the PPPoE protocol.
+	Check that the pppoe add-on is in /boot/home/config/add-ons/net_server. If it still doesn't work, try moving it to /boot/beos/system/add-ons/net_server.
+
+2. I can connect but it keeps telling me that the host cannot be found!
+	You may need to manually enter your DNS settings. Try to find these out from either a PPPoE client on another computer or from your ISP. Enter them in DialUpNetworking Settings.
+
+3. It connects, but then disconnects quickly
+	Choose "Static IP" in DialUpNetworking. You do not need to enter a static IP, DUN will use a dynamic IP anyway. If this doesn't fix it, please double-click the pppoe binary as though you were configuring it and choose "Force Manual DNS". This fixes a bug in DUN at the price of requiring manual entry of DNS settings.
+
+If all else fails, e-mail me at NathanWhitehorn@kagi.com
