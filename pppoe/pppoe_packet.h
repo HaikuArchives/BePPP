@@ -51,4 +51,5 @@ class SessionPacket : public PPPPacket, public PPPoEPacket{
 		SessionPacket(BNetPacket *packet);
 		void SetData(const void *data,size_t length,uint16 offset = 0); //---Less than 1522 bytes
 		size_t GetData(const void *buffer,size_t length,uint16 offset = 0);
+		virtual uint8 *RawData(size_t *size);
 };

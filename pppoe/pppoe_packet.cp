@@ -104,6 +104,13 @@ void SessionPacket::SetData(const void *data,size_t length,uint16 offset) {
 	PPPoEPacket::SetData(data,length,offset);
 }
 
+uint8 *SessionPacket::RawData(size_t *size) {
+	unsigned length = 4096;
+	uint8 *data = (uint8 *)DataBlock(20,&length);
+	*size = length;
+	return data;
+}
+
 size_t SessionPacket::GetData(const void *buffer,size_t length,uint16 offset) {
 	return PPPoEPacket::GetData(buffer,length,offset);
 }
