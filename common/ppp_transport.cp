@@ -136,11 +136,8 @@ size_t ppp_transport::ReadBuffer(void *data,size_t length,buffer_type buffer,off
 
 size_t ppp_transport::WriteBuffer(void *data,size_t length,buffer_type buffer) {  //-------Implement sliding buffer
 	acquire_sem(read_write);
-	if (((out_buffer_size + length) > out_buf_max) && (buffer == out_buffer)) {
-		printf("pppoe: Reallocing...\n");
+	if (((out_buffer_size + length) > out_buf_max) && (buffer == out_buffer))
 		out_buffer_data = (uint8 *)realloc(out_buffer_data,out_buf_max += 4096);
-		printf("pppoe: Realloc complete...\n");
-	}
 	
 	if (buffer == out_buffer) {
 		if (length != 0)
@@ -152,7 +149,6 @@ size_t ppp_transport::WriteBuffer(void *data,size_t length,buffer_type buffer) {
 		size_t curLength = length - written;
 		while (curLength > 0 /* if it wasn't all written */) {
 			snooze(500); /* wait a little, then retry */
-			printf("pppoe: Trying again: %d bytes written...\n",written);
 			written += write(pty_fd,(void *)((uint32)data + (uint32)written),curLength);
 			curLength = length - written;
 		}
@@ -334,7 +330,6 @@ ppp_transport::~ppp_transport(void) {
 	if (linkUp)
 		Terminate(true,true);
 	kill_thread(watcher);
-	close(pty_fd);
 	unlink(fiddle);
 	free(out_buffer_data);
 	delete_sem(read_write);
