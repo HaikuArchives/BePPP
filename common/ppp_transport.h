@@ -1,11 +1,7 @@
 #include "ppp_packet.h"
 #include <OS.h>
 #include <limits.h>
-
-typedef enum {
-	in_buffer,
-	out_buffer
-} buffer_type;
+#include <SerialPort.h>
 
 class ppp_transport {
 	public:
@@ -25,22 +21,23 @@ class ppp_transport {
 		volatile bool linkUp;
 		char number_dialed[255];
 	private:
-		size_t ReadBuffer(void *data,size_t length,buffer_type buffer,off_t offset = 0,bool slide = true);
-		size_t WriteBuffer(void *data,size_t length,buffer_type buffer);
-		void SlideBuffer(off_t distance,off_t offset = 0,buffer_type buffer = out_buffer);
-		void MessageReceived(const void *data,size_t length);
+		size_t WriteBuffer(void *data,size_t length);
+		void SlideBuffer(off_t distance,off_t offset = 0);
+		void DataReceived(off_t offset);
 		
 		static int32 watch_port(void *us);
-		static int32 Modem(void *pointer);
+		int32 Modem(void);
+		
+		status_t alloc_pty(char *buffer);
 		
 		void *out_buffer_data;
 		ssize_t out_buffer_size, out_buf_max;
 		
 		bool drop_second_ipcp;
 		
-		thread_id watcher,modem;
-		sem_id read_write;
-		int pty_fd;
+		thread_id watcher;
+		
+		BSerialPort serial;
 		const char *port_name;
 		
 		int32 mtu;

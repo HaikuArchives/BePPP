@@ -79,24 +79,22 @@ void PPPPacket::SetToAsyncFrame(const void *frame,size_t length,int32 clamp) {
 
 size_t PPPPacket::GetAsyncFrame(const void *frame,size_t length,int32 clamp) {
 	uint8 *data = (uint8 *)(frame);
-	uint8 *edit_buffer = new uint8[4096];
-	size_t size = GetData((const void *)(uint32(data) + 3),4093);
+	size_t size;
+	uint8 *edit_buffer = RawData(&size);
 	
 		data[0] = 0x7e;			//-----MagicCookies
 		data[1] = 0xff;			//-----|
-		data[2] = 0x03;			//-----|
-								//-----Data
-		data[size+3] = 0x7e;	//-----Frame termination
-	size += 4;
-	memcpy(edit_buffer,data,size);
-	uint16 fcs = pppfcs16(PPPINITFCS16,&(edit_buffer[1]),size-2);
+		data[2] = 0x7d;			//-----|
+		data[3] = 0x23;			//-----|
+	
+	uint8 little[2] = {0xff,0x03};
+	uint16 fcs = pppfcs16(PPPINITFCS16,little,2);
+	fcs = pppfcs16(fcs,edit_buffer,size);
 	fcs ^= 0xffff;
-  	edit_buffer[size-1] = fcs & 0x00ff;
-   	edit_buffer[size] = (fcs >> 8) & 0x00ff;
-	size += 2;
-	data[size-1] = 0x7e;	//-----Frame termination
-	int32 g = 2;
-	for (int32 i = 2; i < (size-1); i++) {
+  	little[0] = fcs & 0x00ff;
+   	little[1] = (fcs >> 8) & 0x00ff;
+	int32 g = 4;
+	for (int32 i = 0; i < size; i++) {
 		if ((edit_buffer[i] == 0x7e) || (edit_buffer[i] == 0x7d) || (edit_buffer[i] < 0x20)) {
 			data[g] = 0x7d;
 			g++;
@@ -106,9 +104,18 @@ size_t PPPPacket::GetAsyncFrame(const void *frame,size_t length,int32 clamp) {
 		}
 		g++;
 	}
+	for (int32 i = 0; i < 2; i++) {
+		if ((little[i] == 0x7e) || (little[i] == 0x7d) || (little[i] < 0x20)) {
+			data[g] = 0x7d;
+			g++;
+			data[g] = little[i] ^ 0x20;
+		} else {
+			data[g] = little[i];
+		}
+		g++;
+	}
 	size = g+1;
 	data[g] = 0x7e;	//-----Frame termination
-	delete [] edit_buffer;
 	#if ASSERTIONS
 		assert(size < 4096);
 	#endif
