@@ -1,0 +1,27 @@
+This is an experimental PPtP client. To the best of my knowledge, it does not work, although this may have more to do with my ineptitude in setting up a pptp daemon on my linux box than anything else. However, some instructions for trying it follow:
+	To compile:
+		-run build.sh from the Terminal. This will build the add-on and move it to its proper location.
+	To setup:
+		-Add a section like this to your network settings file :
+interface1:
+	DEVICECONFIG = pptp
+	DEVICELINK = 
+	DEVICETYPE = ETHERNET
+	IPADDRESS = 192.168.0.3
+	NETMASK = 255.255.255.0
+	PRETTYNAME = PPtP
+	ENABLED = 1
+	DHCP = 0
+
+		-Add pptp to the PROTOCOLS line in the same file
+		-Add interface1 to the INTERFACES line
+		-Turn on IP forwarding (absolute requirement)
+		-Follow the directions for setting up PPPoE in DUN, except you must enter the server name or IP address of the pptp server as the phone number.
+		-Restart networking
+		-Check that all your modifications to the net settings file have not been changed
+
+Notes:
+	Network will say that PPtP is not present. It is. Network lies.
+	Please e-mail at NathanWhitehorn@kagi.com with the contents of the file /tmp/pptp.dump and a description of how far it got.
+
+Good luck!
