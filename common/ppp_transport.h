@@ -21,12 +21,11 @@ class ppp_transport {
 		volatile bool linkUp;
 		char number_dialed[255];
 	private:
-		size_t WriteBuffer(void *data,size_t length);
-		void SlideBuffer(off_t distance,off_t offset = 0);
+		inline void SlideBuffer(void);
 		void DataReceived(off_t offset);
 		
 		static int32 watch_port(void *us);
-		int32 Modem(void);
+		void Modem(void);
 		
 		status_t alloc_pty(char *buffer);
 		

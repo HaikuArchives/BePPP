@@ -71,8 +71,13 @@ int32 ppp_transport::watch_port(void *us) {
 			continue;
 		
 		old_length = obj->out_buffer_size;
-		while ((obj->out_buffer_size + bufferSize) > obj->out_buf_max)
-			obj->out_buffer_data = realloc(obj->out_buffer_data,obj->out_buf_max += 4096);
+		if (obj->out_buffer_data == NULL) {
+			obj->out_buf_max = 4096 * (int(bufferSize / 4096) + 1);
+			obj->out_buffer_data = malloc(obj->out_buf_max);
+		} else {
+			while ((obj->out_buffer_size + bufferSize) > obj->out_buf_max)
+				obj->out_buffer_data = realloc(obj->out_buffer_data,obj->out_buf_max += 4096);
+		}
 		obj->serial.Read((void *)((uint32)(obj->out_buffer_data) + (uint32)obj->out_buffer_size),bufferSize);
 		
 		obj->out_buffer_size += bufferSize;
@@ -86,12 +91,12 @@ int32 ppp_transport::watch_port(void *us) {
 	return 0;
 }
 
-int32 ppp_transport::Modem(void) {							//---------Our lovely fake modem-------
+void ppp_transport::Modem(void) {							//---------Our lovely fake modem-------
 	if (out_buffer_size == 0)
-		return 0;
+		return;
 	char last_char = ((uint8 *)(out_buffer_data))[out_buffer_size - 1];
 	if ((last_char != '\r') && (last_char != '\n'))
-		return 0;
+		return;
 	BString command((const char *)out_buffer_data,out_buffer_size);
 	char *response;
 	if (command.IFindFirst("ATDT") != B_ERROR) {
@@ -104,48 +109,31 @@ int32 ppp_transport::Modem(void) {							//---------Our lovely fake modem-------
 	} else {
 		response = /*(last_char == '\n') ? */"OK\n\r"/* : "OK\r\n"*/;
 	}
+	if (command.IFindFirst("ATH") != B_ERROR) {
+		serial.Write("OK\n\r",4);
+		snooze(500);
+		serial.Close();
+		SlideBuffer();
+		return;
+	}
 	#if DEBUG_ON
 		fprintf(f,"\n\nResponse: %s",response);
 		fflush(f);
 	#endif
-	WriteBuffer(response,strlen(response));
-	return 0;
+	serial.Write(response,strlen(response));
+	SlideBuffer();
 }
 
-void ppp_transport::SlideBuffer(off_t distance,off_t offset) {
-	distance = (distance > out_buffer_size) ? out_buffer_size : distance;
-	
-	if (out_buffer_size > distance) {
-		memcpy((void *)((uint32)(out_buffer_data) + (uint32)(offset)),(void *)((uint32)(out_buffer_data) + (uint32)(offset) + (uint32)(distance)),out_buffer_size - distance);
-		out_buffer_size -= distance;
-	} else
-		out_buffer_size = 0;
-	
-	if (out_buffer_size < (out_buf_max - 6096 /* Really under, not just a byte or two */))
-		out_buffer_data = realloc(out_buffer_data,out_buf_max -= 4096);
-}
-
-size_t ppp_transport::WriteBuffer(void *data,size_t length) {  //-------Implement sliding buffer
-
-	ssize_t written = serial.Write(data,length);
-	if (written < 0) {			//--------We got closed. Phooey.
-		char pty_name[15], port_path[64];
-		alloc_pty(pty_name);
-		pty_name[5] = 't';
-		unlink(port_path);
-		symlink(pty_name,port_path);
-		written = serial.Write(data,length);
-	}
-	while ((length - written) > 0 /* if it wasn't all written */) {
-		snooze(500); /* wait a little, then retry */
-		written += serial.Write((void *)((uint32)data + (uint32)written),(length - written));
-	}
-	return length;
+void ppp_transport::SlideBuffer(void) {
+	out_buf_max = 0;
+	out_buffer_size = 0;
+	free(out_buffer_data);
+	out_buffer_data = NULL;
 }
 
 ppp_transport::ppp_transport (const char *port) {
-	out_buffer_data = malloc(4096);
-	out_buf_max = 4096;
+	out_buffer_data = NULL;
+	out_buf_max = 0;
 	out_buffer_size = 0;
 	
 	drop_second_ipcp = false;
@@ -184,7 +172,7 @@ void ppp_transport::Terminate(bool kill_net,bool kill_serial) {
 	if (kill_net)
 		Close();
 	if (kill_serial) {
-		serial.Write("\rNO CARRIER\r",12);
+		serial.Write("NO CARRIER\r\n",12);
 		snooze(500);
 		serial.Close();
 	}
@@ -197,11 +185,6 @@ void ppp_transport::Terminate(bool kill_net,bool kill_serial) {
 }
 
 void ppp_transport::SendPacketToPPP(PPPPacket *recv) {
-	#if TIMED
-		fprintf(t,"Entering SendPacketToPPP...");
-		fflush(t);
-		BStopWatch watch("SendPacketToPPP_watch");
-	#endif
 	static uint8 data[B_PAGE_SIZE] /* don't keep reallocating */;
 	if (recv == NULL)
 		return;
@@ -209,22 +192,18 @@ void ppp_transport::SendPacketToPPP(PPPPacket *recv) {
 	#if ASSERTIONS
 		assert(size < 4096);
 	#endif
-	WriteBuffer(data,size);
-	#if TIMED
-		fprintf(t,"Elapsed time = %f secs\nTotal session packets: s:%d,r:%d\nBuffer length on exit: %d\n",watch.ElapsedTime() / float(1e6),total_sent_packets,++total_recv_packets,out_buffer_size);
-		fflush(t);
-	#endif
+	serial.Write(data,size);
 }
 
 void ppp_transport::DataReceived(off_t offset) {
 
 	if ((linkUp == false) || ((out_buffer_size >= 3) && (memcmp(out_buffer_data,"+++",3) == 0))) {
 		if ((out_buffer_size >= 3) && (memcmp(out_buffer_data,"+++",3) == 0)) {
-			SlideBuffer(3);
-			Terminate(true,true);
+			Terminate(true,false);
+			SlideBuffer();
 			return;
 		}
-		WriteBuffer((void *)(uint32(out_buffer_data) + uint32(offset)),out_buffer_size - offset); //---Echo back
+		serial.Write((void *)(uint32(out_buffer_data) + uint32(offset)),out_buffer_size - offset); //---Echo back
 		Modem();
 		return;
 	}
@@ -248,15 +227,12 @@ void ppp_transport::DataReceived(off_t offset) {
 					to_send->GetData(&ppp_protocol,2);
 					FROM_NET_ENDIAN(ppp_protocol);
 					SendPacketToNet(to_send);
-					SlideBuffer(sub_length,offset);
-					i -= sub_length;
-					if ((ppp_protocol == 0x8021) && (drop_second_ipcp)) {
-						SlideBuffer(out_buffer_size,0);
+					if ((ppp_protocol == 0x8021) && (drop_second_ipcp))
 						break;
-					}
 				}
 			}
 		}
+		SlideBuffer();
 	}
 }
 
@@ -272,5 +248,6 @@ ppp_transport::~ppp_transport(void) {
 		Terminate(true,true);
 	kill_thread(watcher);
 	unlink(fiddle);
-	free(out_buffer_data);
+	if (out_buffer_data != NULL)
+		free(out_buffer_data);
 }
