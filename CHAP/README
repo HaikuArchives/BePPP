@@ -1,0 +1,8 @@
+This is untested code. All I know is that it compiles, and does not crash on startup. I don't even know if it works with CHAP.To use, simply double click the binary in either obj.x86 or obj.ppc (depending on you rplatform, of course) and tell it to move itself and choose "CHAP Active". THen restart networking. Keep in mind the following things:
+
+1) This is untested
+2) For it to respect the username/password changes made in DUN, you MUST restart networking
+3) Please send feedback
+4) When you do attach the file /tmp/chap.dump and make sure to edit out your username and password. Just tell me whether it got them right.
+
+Good luck and happy surfing!
